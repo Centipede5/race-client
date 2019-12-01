@@ -1,0 +1,488 @@
+<script src="gameIO_5.js"></script>
+<img id="road" src="road.png">
+<img id="car" src="car.png">
+<img id="ship" src="ship.png">
+<img id="bullet" src="bullet.png">
+<img id="trail" src="trail.png">
+<img id="oil" src="oil.png">
+<img id="boost" src="boost.png">
+<img id="heal" src="heal.png">
+<img id="bullets" src="bullets.png">
+<img id="str" src="02.png">
+<img id="cur" src="01.png">
+<style>
+	img {
+		display:none;
+	}
+</style>
+<title>GameIO Online Test</title>
+<script>
+var images = ["deco1","deco2","star1","star2","star3"];
+window.loadImage = function(id){
+	document.head.innerHTML+="<img style='display:none;' id='"+id+"' src='"+id+".png'>"
+}
+for(var i in images){
+	window.loadImage(images[i])
+}
+var game = new gameIO();
+game.distance2d = function(a,b){
+    return Math.sqrt(Math.pow(a.position.x-b.position.x,2)+Math.pow(a.position.y-b.position.y,2));
+  }
+  function kFormatter(num) {
+        	return num > 999 ? (num/1000).toFixed(1) + 'k' : num
+    	}
+  window.onload = function() {
+    
+	  function transition(value,ideal,speed){
+		  value+=(ideal-value)*speed*game.clientDetails.dt;
+		  return value;
+		  
+	  }
+	  window.ready2 = true;
+    var renderer = new game.renderer();
+    renderer.c.style.backgroundColor = "#060725";
+	  var mouse = new game.mouse( renderer );
+		renderer.clearScreen = false;
+		var mapsize = 4000;
+    	var scene = new game.scene();
+    	window.scene = scene;
+    	var middle = new game.scene();
+    	middle.camera = scene.camera;
+    	var background = new game.scene();
+    	background.camera = scene.camera;
+    	var hiddenScenes = [
+    		new game.scene(), //back-background
+    		new game.scene(), //medium
+    		new game.scene() //front-background
+    	];
+    	var tiles = [
+    		new game.scene(), //back-background
+    		new game.scene(), //medium
+    		new game.scene() //front-background
+    	];
+		//tiles.camera = scene.camera;
+		for(var i=0;i<200;i++){
+			var size = Math.floor(Math.random()*3);
+			var sizereal = 10+size*29;
+			tiles[size].add(new game.image(getElem("star"+Math.ceil(Math.random()*3)),3000*(Math.random()-0.5),3000*(Math.random()-0.5),sizereal,sizereal));
+		}
+		// for(var i=0;i<10;i++){
+		// 	tiles.add(new game.image(getElem("deco"+Math.ceil(Math.random()*2)),3000*(Math.random()-0.5),3000*(Math.random()-0.5),300,300));
+		// }
+    	var ui = new game.scene();
+        window.upgradebuttons  = new game.object();
+        var upgradebuttons = window.upgradebuttons;
+        ui.add(window.upgradebuttons);
+    	var createUpgrades = function(y,list){
+    		for(var i=0;i<list.length;i++){
+    			var upg = new game.object();
+    			upg.addBelow(new game.roundRectangle(i*100-list.length*50,renderer.bottomOfScreen - y, 100, 100, 20, "rgba(0,0,0,0.5)"))//;
+    			upg.add(new game.text(list[i],i*100-list.length*50,renderer.bottomOfScreen - y,"white"));
+    			upg.name = list[i];
+    			window[list[i]+"button"] = upg;
+    			upg.objects[0].add(new game.text("level 1",0,30,"white",null, 15));
+    			upgradebuttons.add(upg);
+    		}
+    	}
+    	window.upgradedto = 0;
+    	var leaderboard = [];
+    	var leaderboardChanged = false;
+    	game.addPacketType( "leaderboard", function( packet ) {
+        	leaderboardChanged = true;
+        	leaderboard = packet.obj;
+    	});
+    	
+    	var leaderboardVisual = new game.object();
+    	leaderboardVisual.addBelow( new game.roundRectangle( 0, 0, 350, 0,10,"#000000", 0.8 ) );
+    	leaderboardVisual.belowObjects[0].opacity = 0.25;
+		
+		ui.add(leaderboardVisual);
+    	upgradebuttons.update = function(){
+    		// for(var i in upgradebuttons.objects){
+    		// 	var obj = upgradebuttons.objects[i];;
+    		// 	if(mouse.isCollidingWithRectangle(obj.belowObjects[0])){
+    		// 		obj.belowObjects[0].opacity = 0.8;
+    		// 		if(mouse.clicking){
+    		// 			window.tryupgrade(obj.name);	
+    		// 		}
+    		// 	}else{
+    		// 		obj.belowObjects[0].opacity = 0.5;
+    		// 	}
+    		// }
+    		// if(upgradedto==game.me.score){
+    		// 	upgradebuttons.opacity = 0;
+    		// }else{
+    		// 	upgradebuttons.opacity = 1;
+    		// }
+    		upgradebuttons.opacity = 0;
+    		return;
+    	}
+    	
+    	window.tryupgrade = function(upg){
+    		if(game.me&&game.me.score){
+    			var obj = game.me
+    			if(obj.score>upgradedto){
+    				game.currentPackets.push({ type: "upgrade", type: upg});
+    				window[upg+"button"].objects[0].objects[0].text = "level "+(parseInt(window[upg+"button"].objects[0].objects[0].text.replace("level ",""))+1);
+    				upgradedto++;
+    				
+    			}
+    		}
+    	}
+    	createUpgrades(200,["speed","health","gun"]);
+    	var lapnumber = new game.text("0 laps",renderer.rightOfScreen  - 50, renderer.topOfScreen + 20,"green");
+    	var bulletnumber = new game.text("50 bullets",renderer.rightOfScreen  - 70, renderer.topOfScreen + 60,"red");
+    	var dials = [];
+    	var createDial = function(y,size,max,name){
+    		var speeddial = new game.object();
+    		var needle = new game.object();
+    		needle.add(new game.rectangle(0,size/2,size/10,size));
+    		needle.value =0;
+    		speeddial.setPos = function(newr){
+    			needle.rotation = newr*Math.PI*2;
+    			needle.value = newr;
+    		}
+    		speeddial.add(needle);
+    		speeddial.addBelow(new game.circle(0,0,size*1.2,"lightgray"));
+    		speeddial.position = new game.Vector2(y,renderer.bottomOfScreen-size*1.2);
+    		for(var i=0;i<10;i++){
+    			speeddial.add(new game.text(Math.round((i/10)*max)+"",Math.cos((i/10)*2*Math.PI+Math.PI/2)*size*1,Math.sin((i/10)*2*Math.PI+Math.PI/2)*size*1),"black",0,"20");
+    		}
+    		for(var i in speeddial.objects){
+    			var obj = speeddial.objects[i];
+    			if(obj.fontSize){
+    				obj.fontSize = size/4;
+    			}
+    		}
+    		speeddial.add(new game.text(name,0,size*0.5))
+    		ui.add(speeddial);
+    		dials.push(speeddial);
+    		speeddial.opacity = 0;
+    		return speeddial;
+    	}
+    	window.speeddial = createDial(-100,50,200,"speed");
+    	window.thrustdial = createDial(100,50,10,"throttle");
+    	
+    	ui.add(lapnumber);
+    	ui.add(bulletnumber);
+    	window.ended = false;
+    	var timenumber = new game.text("180 seconds left",renderer.rightOfScreen-10 , renderer.topOfScreen + 90,"blue",0,0, 0, 1,"right");
+    	game.addPacketType( "gsl", function( packet ) {
+        	timenumber.text = (packet.object-10)+" seconds left";
+        	window.ended = false;
+        	if(packet.object==10){
+        		var objr = new game.text("Game Over!", 0, -200,"orange","",80);
+        		
+        		var objp = new game.customParticle( objr,0.0001,0.5);
+        		objp.rotation = 0
+        		objp.turn = 0;
+        		ui.add(objp);
+        	}
+        	if((packet.object-10)<0){
+        		window.ended = true;
+        		timenumber.text = packet.object+" until next";
+        	}
+    	});
+    	ui.add(timenumber);
+  //   for( var i = -10*mapsize/2000; i <= 10*mapsize/2000; i++ ) {
+		// 	var img = new game.image( getElem("road"), i * 256 * 2,0, 512, 512 );
+		// 	background.add( img );
+		// }
+		var counter = 0;
+		var controls = new game.keyboard();
+		game.addType(
+			"player",
+			function( obj, packet ) {
+				obj.visual = new game.object();
+				obj.car = new game.image(getElem("ship"),0,0,250*0.25,250*0.25);//new game.image( getElem("car"),0, 0,packet.width,packet.height);
+				obj.ui = new game.object();
+				obj.healthbar = new game.roundRectangle(0, 70,100,8,4,"#00cc00");//game.image( getElem("health"), 0, -70, 100, 20 );//new game.rectangle(0,-50,100,20,"green");
+				obj.healthbar.addBelow(new game.roundRectangle(0, 0,105,13,4,"#262626"));
+				obj.ui.add(obj.healthbar);
+				obj.boostbar = new game.roundRectangle(0, 90,100,8,4,"aqua");//game.image( getElem("health"), 0, -70, 100, 20 );//new game.rectangle(0,-50,100,20,"green");
+				obj.boostbar.addBelow(new game.roundRectangle(0, 0,105,13,4,"#262626"));
+				obj.ui.add(obj.boostbar);
+				obj.visual.add(obj.ui);
+				obj.boosting = false;
+				//obj.car.rotation = Math.PI/2;
+				obj.visual.add(obj.car);
+				obj.size = 35;
+				obj.view = 80;
+				obj.newspeed = 0;
+				obj.lastspeed = 0;
+				obj.realspeed = 0;
+				obj.health = 100;
+				obj.score = 0;
+				obj.protect = false;
+				obj.boost = 100;
+				scene.add( obj.visual );
+			},
+			function(obj){
+				if(obj.protect||obj.car.opacity<0.95){
+					obj.car.opacity = 0.5+0.5*Math.sin(counter/10);
+				}else{
+					obj.car.opacity =1;
+				}
+				obj.healthbar.width+= (obj.health - obj.healthbar.width) * 0.1 * game.clientDetails.dt;
+				obj.boostbar.width+= (obj.boost - obj.boostbar.width) * 0.1 * game.clientDetails.dt;
+				obj.realspeed = game.lerp(obj.lastspeed,obj.newspeed);
+				if(obj.id==game.me.id){
+					window.speeddial.setPos(obj.realspeed/1200);
+				}
+				var vehicle = obj;
+            	var angle = Math.PI * 0.09;
+            	var rotation = vehicle.visual.rotation+Math.PI/2;
+            	middle.add(new game.particle(vehicle.visual.position.x + 40 * Math.cos(rotation + angle), vehicle.visual.position.y + 40 * Math.sin(rotation + angle), 8, "#aaaaaa", 0.01, 1.2));
+            	middle.add(new game.particle(vehicle.visual.position.x + 40 * Math.cos(rotation - angle), vehicle.visual.position.y + 40 * Math.sin(rotation - angle), 8, "#aaaaaa", 0.01, 1.2));
+				if(obj.boosting){
+					var angle = 0;
+					middle.add(new game.particle(vehicle.visual.position.x + 40 * Math.cos(rotation + angle), vehicle.visual.position.y + 40 * Math.sin(rotation + angle), 20, "#00ffff", 0.01, 5));
+            		//middle.add(new game.particle(vehicle.visual.position.x + 40 * Math.cos(rotation - angle), vehicle.visual.position.y + 40 * Math.sin(rotation - angle), 12, "#00ffff", 0.01, 5));
+				}
+				obj.ui.rotation = -obj.visual.rotation;
+			},
+			function(obj,packet){
+				obj.lastspeed = obj.realspeed;
+				obj.protect = packet.protect;
+				obj.newspeed = packet.speed;
+				obj.boosting = packet.boosting;
+				obj.boost = packet.boost;
+				obj.health = packet.hp;
+				obj.score = parseInt(packet.lap)+10;
+				if(game.me&&obj.id===game.me.id){
+					lapnumber.text = packet.lap+" laps";
+				}
+				if(game.me&&obj.id===game.me.id){
+					bulletnumber.text = packet.bullets+" bullets";
+				}
+			},
+			function(obj,packet){
+				if(obj.id==game.me.id){
+					document.location.reload();
+				}
+			}
+		);
+		game.addType(
+			"enemy",
+			function( obj, packet ) {
+				obj.visual = new game.rectangle( 0, 0, packet.size, packet.size, "#F00" );
+				scene.add( obj.visual );
+			}
+		);
+		game.addType(
+			"pickup",
+			function( obj, packet ) {
+				obj.typeb = packet.typeb;
+				obj.visual = new game.image(getElem(packet.typeb),0,0,50,50,0.01);//new game.rectangle( 0, 0, 100, 100, "red");
+				scene.add( obj.visual );
+			},
+			function( obj ) {
+				if(obj.visual.opacity<1){
+					obj.visual.opacity = Math.min(obj.visual.opacity+0.05,1)
+				}
+			},
+			function( obj, packet ) {
+			},
+			function( obj, packet ) {
+				console.log("removed");
+				var objr = new game.image(getElem(obj.typeb),obj.visual.position.x,obj.visual.position.y,50,50);
+				objr.rotation = 0;
+        		var objp = new game.customParticle( objr,0.0001,2);
+        		objp.rotation = 0;
+        		scene.add(objp);
+			}
+		);
+		game.addType(
+			"start",
+			function( obj, packet ) {
+				obj.visual = new game.rectangle( 0, 0, 50, 500, "#F00",0.5 );
+				scene.addBelow( obj.visual );
+			}
+		);
+		game.addType(
+			"bullet",
+			function( obj, packet ) {
+				obj.gunType = packet.bulletType;
+				if(obj.gunType=="oil"){
+					obj.visual = new game.circle( 0, 0, 100, "grey");
+				}else{
+					obj.visual = new game.object();
+					obj.sprite = new game.image( getElem("bullet"), 0, 0, 10, 20 );
+					obj.sprite.addBelow(new game.image( getElem("trail"), 0, -70, 10, 140,0.9 ))
+					obj.visual.add(obj.sprite);
+					obj.sprite.rotation=-Math.PI/2;
+				}
+				scene.addBelow( obj.visual );
+			}
+		);
+		game.addType(
+			"road",
+			function( obj, packet ) {
+				/*
+				    2
+				|------|
+			   5|------|3
+				|------|
+				    4
+				*/
+				var extra = packet.e;
+				obj.visual = new game.object();
+				obj.sprite = new game.object();
+				obj.extra = extra;
+				if(obj.extra[2]&&obj.extra[4]){
+					obj.sprite = new game.image( getElem("str"), 0,0, 500, 500 );
+				}else if(obj.extra[5]&&obj.extra[3]){
+					obj.sprite = new game.image( getElem("str"), 0,0, 500, 500 );
+					obj.sprite.rotation = -Math.PI/2;
+				}else if(obj.extra[2]&&obj.extra[5]){
+					obj.sprite = new game.image( getElem("cur"), 0,0, 500, 500 );
+				}else if(obj.extra[2]&&obj.extra[3]){
+					obj.sprite = new game.image( getElem("cur"), 0,0, 500, 500 );
+					obj.sprite.rotation = +Math.PI/2;
+				}else if(obj.extra[3]&&obj.extra[4]){
+					obj.sprite = new game.image( getElem("cur"), 0,0, 500, 500 );
+					obj.sprite.rotation = -Math.PI;
+				}else if(obj.extra[4]&&obj.extra[5]){
+					obj.sprite = new game.image( getElem("cur"), 0,0, 500, 500 );
+					obj.sprite.rotation = 3*Math.PI/2;
+				}
+				obj.visual.add(obj.sprite);
+				background.add( obj.visual );
+			}
+		);
+		game.packetFunctions[ "setID" ] = function( packet ) {
+			for( var i = 0; i < game.objects.length; i++ ) {
+        if( game.objects[ i ].id == packet.id ) {
+          game.me = game.objects[ i ];
+        }
+      }
+			scene.camera.position = game.me.visual.position;
+			
+    };
+		game.createSocket( "wss://81708b4a8ac94221831779dd80464ca6.vfs.cloud9.us-east-2.amazonaws.com/ws");
+	var timeSinceCull= 400;
+	function isVisualClose(object,tiles) {
+        if (Math.abs(tiles.camera.position.x - object.position.x) < 1920 / 2 + 1000 && Math.abs(tiles.camera.position.y - object.position.y) < 1080 / 2 + 700)
+            return true;
+    	}
+    function main() {
+    	for(var i in tiles){
+    		tiles[i].camera.position.x = scene.camera.position.x/(3*i)
+    		tiles[i].camera.position.y = scene.camera.position.y/(3*i)
+			//renderer.render( tiles[i] );
+		}
+    	//tiles.camera.position.x = scene.camera.position.x/10
+    	//tiles.camera.position.y = scene.camera.position.y/10
+    	counter++;
+			if(game.me.size){
+				scene.camera.ratio = transition(scene.camera.ratio,((game.me.view/2)/35),0.05);
+				game.me.ui.rotation = -game.me.visual.rotation;
+			}
+			if (timeSinceCull > 400) {
+				for(var i in tiles){
+					var tile = tiles[i];
+					var hiddenScene = hiddenScenes[i];
+                for (var x = 0; x < tile.objects.length; x++) {
+                    var object = tile.objects[x];
+                    if (!isVisualClose(object,tile)) {
+                        tile.remove(object);
+                        hiddenScene.add(object);
+                        x--;
+                    }
+                };
+                for (var x = 0; x < tile.belowObjects.length; x++) {
+                    var object = tile.belowObjects[x];
+                    if (!isVisualClose(object,tile)) {
+                        tile.remove(object);
+                        hiddenScene.addBelow(object);
+                        x--;
+                    }
+                };
+                for (var x = 0; x < hiddenScene.objects.length; x++) {
+                    var object = hiddenScene.objects[x];
+                    if (isVisualClose(object,tile)) {
+                        hiddenScene.remove(object);
+                        tile.add(object);
+                        x--;
+                    }
+                }
+                for (var x = 0; x < hiddenScene.belowObjects.length; x++) {
+                    var object = hiddenScene.belowObjects[x];
+                    if (isVisualClose(object,tile)) {
+                        hiddenScene.remove(object);
+                        tile.addBelow(object);
+                        x--;
+                    }
+                }
+				}
+            timeSinceCull = 0;
+        }
+        timeSinceCull += game.clientDetails.dt * 16.67;
+			if (leaderboardChanged) {
+            var font = "Impact";
+            leaderboardChanged = false;
+            var fontSize = 30;
+            var fontSpace = 5;
+            leaderboardVisual.belowObjects[ 0 ].width = 350;
+            leaderboardVisual.belowObjects[ 0 ].width += 20;
+            leaderboardVisual.belowObjects[ 0 ].height = ( leaderboard.length + 1 ) * ( fontSize + fontSpace ) + fontSpace;
+            leaderboardVisual.objects = [];
+            leaderboardVisual.add( new game.text( "Leaderboard", 0, -leaderboardVisual.belowObjects[ 0 ].height/2 + fontSize/2 + fontSpace, "#FFF", font, fontSize, "" ) );
+            for( var i = 0; i < leaderboard.length; i++ ) {
+                var opacity = 0.4;
+                if( leaderboard[ i ].id == game.me.id ) {
+                    opacity = 1;
+                }
+                	leaderboardVisual.add( new game.text( leaderboard[i].name, -leaderboardVisual.belowObjects[ 0 ].width/2+fontSpace, -leaderboardVisual.belowObjects[ 0 ].height/2 + fontSize/2 + fontSpace + (i+1)*(fontSize+fontSpace), "#FFF", font, fontSize, "", opacity, "left" ) );
+                	leaderboardVisual.add( new game.text( "" + kFormatter( Math.round(leaderboard[i].score) ), leaderboardVisual.belowObjects[ 0 ].width/2-fontSpace, -leaderboardVisual.belowObjects[ 0 ].height/2 + fontSize/2 + fontSpace + (i+1)*(fontSize+fontSpace), "#FFF", font, fontSize, "", opacity, "right" ) );
+                	
+                }
+            leaderboardVisual.belowObjects[ 0 ].width += 20;
+            leaderboardVisual.belowObjects[ 0 ].height += 20;
+        }
+        leaderboardVisual.position = new game.Vector2( renderer.leftOfScreen + leaderboardVisual.belowObjects[ 0 ].width/2 + 20, renderer.topOfScreen + leaderboardVisual.belowObjects[ 0 ].height/2 + 20 );
+        leaderboardVisual.size = 1;
+        if(window.ended){
+        	leaderboardVisual.position = new game.Vector2( 0, 0 );
+        	leaderboardVisual.size = 1.5;
+        }
+			upgradebuttons.update();
+			//scene.camera.ratio+= ((game.me.size/35) - scene.camera.ratio) * 0.1 * game.clientDetails.dt;
+			//scene.camera.ratio = ((game.me.size/2)/35);
+			if( controls.changed ) {
+				controls.changed = false;
+				if( game.ws.readyState == 1 )
+					game.currentPackets.push( { type: "updateControls", object: controls } );
+			}
+			if(mouse.moved) {
+				game.me.visual.rotationr = -Math.atan2( mouse.x, mouse.y )+Math.PI;
+				var t = Math.min(game.distance2d({position:{x:0,y:0}},{position:mouse})/200,1);
+				
+				if(t<0.1){
+					t = 0;
+				}
+				window.thrustdial.setPos(t*0.9);
+				game.currentPackets.push({ type: "setRotation", object: { angle: Math.round( game.me.visual.rotationr * 1000 ) / 1000,throttle:t } });
+				mouse.moved = false;
+			}
+			if(mouse.changed||mouse.rightChanged){
+				game.currentPackets.push({type:"mouse",clicking:mouse.clicking,rightClicking:mouse.rightClicking});
+				mouse.changed = false;
+				mouse.rightChanged = false;
+			}
+			
+			game.update();
+			renderer.clear();
+			for(var i in tiles){
+				renderer.render( tiles[i] );
+			}
+			
+			renderer.render(background);
+			renderer.render(middle);
+      renderer.render( scene );
+      renderer.render( ui );
+      requestFrame( main );
+    }
+    main();
+  }
+</script>
