@@ -1,0 +1,124 @@
+<html>
+<head>
+    <!-- BEGIN CPMSTAR ANCHOR AD CODE -->
+<script type="text/javascript">
+    var cpmstar_anchorad_settings = {
+        poolid: 79071, //Pool ID assigned by CPMStar
+        dir: 1
+        };
+
+    (function (d, t, s) { t = d.createElement('script'); t.type = 'text/javascript'; t.src = (d.location.protocol == 'https:'?'//server':'//cdn') + '.cpmstar.com/cached/js/anchorad_v100.pack.js'; t.async = true; s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(t, s); })(document, {}, {});
+</script>
+<!-- END CPMSTAR ANCHOR AD CODE -->
+<style>
+@font-face {
+    font-family: "Impact";
+    src: url(Impact.ttf) format("truetype");
+}
+body {
+    user-select: none;
+    overflow: hidden;
+}
+#menu {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    position: absolute;
+    top: 10px;
+    z-index: 100;
+    align-items: center;
+    text-align: center;
+}
+.centerContent{
+    text-align: center;
+    width: 100%;
+}
+#gamename {
+    color: #ffffff;
+    font-size: 130px;
+    width: 100%;
+    text-align: center;
+    font-family: 'Impact';
+}
+#username {
+    font-family: 'Impact';
+    font-size: 26px;
+    padding: 6px;
+    padding-left: 12px;
+    border: none;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+.startbutton{
+    font-family: 'Impact';
+    font-size: 26px;
+    padding: 5px;
+    color: #ffffff;
+    background-color: #ea6363;
+    border: none;
+    cursor: pointer;
+    margin-left: 10px;
+    border-radius: 4px;
+}
+#tips {
+    font-size: 21px;
+    width: 400px;
+    text-align: center;
+    font-family: 'impact';
+    margin-top: 20px;
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.5);
+}
+.links {
+    z-index: 1000;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    text-align: center;
+    font-size: 20px;
+    font-family: 'impact';
+    color: rgba(255, 255, 255, 0.9);
+    padding: 5px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    text-decoration: none;
+}
+#links a {
+    text-decoration: none;
+}
+</style>
+
+</head>
+<body style="background-color:#060725">
+<div id="menu">
+    <div class="centerContent">
+        <div id="gamename">spaceracer.ga</div>
+        <div id="startsettings">
+            <input type="text" id="username" placeholder="nickname" maxlength="14" autofocus="">
+            <button type="button" class="startbutton">PLAY</button><br>
+            <div id="tips">
+                Hold mouse to boost, right click to shoot
+            </div>
+        </div>
+    </div>
+    <div class="links">
+		<a style="text-decoration:none;" href="privacy.txt">privacy</a> | 
+		<a style="text-decoration:none;" href="changelog.txt">changelog</a> |
+		<a style="text-decoration:none;" href="partners.html">Partners</a> | 
+		<a style="text-decoration:none;" target="_blank" href="http://iogames.space">More games</a>
+	</div>
+</div>
+<script>
+    var tips = ["Hold mouse to use your boost , right click to shoot in front of your ship", "Pickup upgrades to refill your bullets, boost, and hp bars","Enjoying the game? Share it on Facebook, Twitter, or MySpace!"]
+    var ontip = 0;
+    document.getElementById("tips").innerHTML = tips[ontip];
+    setInterval(function(){
+        ontip++;
+        if(ontip==tips.length)
+            ontip = 0;
+        document.getElementById("tips").innerHTML = tips[ontip];
+    },4000)
+</script>
+</body>
+</html>
+
